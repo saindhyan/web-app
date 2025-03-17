@@ -6,175 +6,378 @@
     <title>Chat Application</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+         #vmStream {
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* Disables hover interactions */
+    }
+        :root {
+            --primary-color: #4a90e2;
+            --primary-dark: #3a7bc8;
+            --text-color: #333;
+            --bg-color: #f5f5f5;
+            --border-color: #ddd;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        * {
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 960px;
-            margin: 0 auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-            width: 100%;
             box-sizing: border-box;
         }
-        header {
-            background-color: #4a90e2;
-            color: white;
-            padding: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+
+        html, body {
+            overflow: hidden;
         }
-        h1 {
-            margin: 0;
-            font-size: 24px;
-            text-align: center;
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            line-height: 1.6;
+            min-height: 100vh;
         }
-        .room-selection {
-            margin-bottom: 20px;
+
+        .main-container {
+            display: grid;
+            grid-template-columns: minmax(300px, 30%) 1fr;
+            height: calc(100vh - 60px);
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+        }
+
+        .chat-side {
+            background: white;
+            border-right: 1px solid var(--border-color);
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            box-shadow: var(--shadow);
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .vm-window {
+            background-color: #000;
+            position: relative;
+            width: calc(100% - 2rem);
+            height: calc(100% - 2rem);
+            margin: 1rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .vm-window iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 12px;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
             align-items: center;
         }
-        .chat-container {
-            flex-grow: 1;
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .debug-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .debug-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .debug-toggle input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: white;
+        }
+
+        .debug-toggle label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .container {
+            padding: 1.25rem;
             display: flex;
             flex-direction: column;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            gap: 1rem;
+            height: 100%;
             overflow: hidden;
-            background-color: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-        .chat-messages {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 15px;
+
+        .room-selection {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .room-selection input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .room-selection button {
+            padding: 0.75rem 1.25rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .room-selection button:hover:not(:disabled) {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .chat-container {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            min-height: 300px;
-            max-height: calc(100vh - 250px);
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            min-height: 0; /* Important for flex container */
         }
+
+        .chat-messages {
+            flex: 1;
+            padding: 1.25rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: 0; /* Important for flex container */
+            max-height: 100%;
+            scrollbar-width: thin;
+            scrollbar-color: #888 #f1f1f1;
+        }
+
         .message {
-            padding: 10px 15px;
-            border-radius: 18px;
-            max-width: 70%;
+            padding: 0.75rem 1rem;
+            border-radius: 16px;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease;
             word-wrap: break-word;
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .user-message {
-            background-color: #e3f2fd;
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
             align-self: flex-end;
             border-bottom-right-radius: 4px;
         }
+
         .response-message {
-            background-color: #f1f1f1;
+            background: linear-gradient(135deg, #f5f5f5, #eeeeee);
             align-self: flex-start;
             border-bottom-left-radius: 4px;
         }
+
         .message-input-container {
             display: flex;
-            padding: 15px;
-            border-top: 1px solid #eee;
-            background-color: white;
+            padding: 1rem;
+            gap: 0.75rem;
+            background: white;
+            border-top: 1px solid var(--border-color);
         }
+
         .message-input {
-            flex-grow: 1;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            margin-right: 10px;
-            font-size: 16px;
+            flex: 1;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid var(--border-color);
+            border-radius: 24px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
         }
+
+        .message-input:focus {
+            border-color: var(--primary-color);
+        }
+
         .send-button {
-            padding: 12px 24px;
-            background-color: #4a90e2;
+            padding: 0.875rem 1.5rem;
+            background: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 20px;
+            border-radius: 24px;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.2s;
+            transition: all 0.3s ease;
         }
-        .send-button:hover {
-            background-color: #3a7bc8;
+
+        .send-button:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
         }
+
         .send-button:disabled {
-            background-color: #cccccc;
+            background: #ccc;
             cursor: not-allowed;
         }
-        .status-message {
-            text-align: center;
-            color: #666;
-            font-style: italic;
-            margin: 10px 0;
-        }
-        input, button {
-            outline: none;
-        }
+
         .connection-status {
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
             text-align: center;
-            padding: 5px;
-            font-size: 14px;
-            border-radius: 4px;
-            margin-bottom: 10px;
+            transition: all 0.3s ease;
         }
+
         .connected {
             background-color: #d4edda;
             color: #155724;
+            border: 1px solid #c3e6cb;
         }
+
         .disconnected {
             background-color: #f8d7da;
             color: #721c24;
+            border: 1px solid #f5c6cb;
         }
+
         .debug-panel {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 12px;
-            max-height: 100px;
+            background: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            max-height: 120px;
             overflow-y: auto;
+        }
+
+        .debug-panel strong {
+            color: var(--primary-color);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            .room-selection {
+                flex-direction: column;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+
+            .message-input-container {
+                padding: 0.75rem;
+            }
+
+            .send-button {
+                padding: 0.875rem 1rem;
+            }
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>Real-time Chat Application</h1>
+        <h1>Korean Telecom e-Assistant</h1>
+        <div class="debug-toggle">
+            <input type="checkbox" id="debugMode">
+            <label for="debugMode">Debug Mode</label>
+        </div>
     </header>
     
-    <div class="container">
-        <div class="connection-status" id="connectionStatus">Connecting...</div>
-        
-        <div class="room-selection">
-            <label for="roomInput">Room ID:</label>
-            <input type="text" id="roomInput" placeholder="Enter room ID" value="room1">
-            <button id="joinRoomButton">Join Room</button>
-        </div>
-        
-        <div class="chat-container">
-            <div class="chat-messages" id="messagesContainer">
-                <div class="status-message">Join a room to start chatting.</div>
+    <div class="main-container">
+        <div class="chat-side">
+            <div class="container">
+                <div class="connection-status" id="connectionStatus">Connecting...</div>
+                
+                <div class="room-selection" style="display: none;">
+                    <label for="roomInput">Room ID:</label>
+                    <input type="text" id="roomInput" placeholder="UUID will be generated" >
+                    <button id="joinRoomButton" >Join Room</button>
+                </div>
+                
+                <div class="chat-container">
+                    <div class="chat-messages" id="messagesContainer">
+                        <div class="status-message">Connecting and generating room ID...</div>
+                    </div>
+                    
+                    <div class="message-input-container">
+                        <input type="text" class="message-input" id="messageInput" placeholder="Type your message..." disabled>
+                        <button class="send-button" id="sendButton" disabled>Send</button>
+                    </div>
+                </div>
+                
+                <div class="debug-panel" id="debugPanel" style="display: none;">
+                    <strong>Debug Panel:</strong>
+                    <div id="debugOutput"></div>
+                </div>
             </div>
-            
-            <div class="message-input-container">
-                <input type="text" class="message-input" id="messageInput" placeholder="Type your message..." disabled>
-                <button class="send-button" id="sendButton" disabled>Send</button>
-            </div>
+        </div>
+
+        <div class="vm-window">
+            <iframe id="vmStream" 
+            src="https://www.youtube.com/embed/nACIncrvZ6g?autoplay=1&controls=0&modestbranding=1&rel=0&showinfo=0&mute=1" 
+            frameborder="0" allowfullscreen allow="autoplay">
+        </iframe>
         </div>
         
-        <div class="debug-panel" id="debugPanel">
-            <strong>Debug Panel:</strong>
-            <div id="debugOutput"></div>
-        </div>
     </div>
 
     <script>
@@ -187,10 +390,28 @@
             const messageInput = document.getElementById('messageInput');
             const sendButton = document.getElementById('sendButton');
             const debugOutput = document.getElementById('debugOutput');
+            const debugPanel = document.getElementById('debugPanel');
+            const debugMode = document.getElementById('debugMode');
+            const roomSelection = document.querySelector('.room-selection');
             
             // Variables
             let socket;
             let currentRoom = null;
+
+            // Debug mode toggle handler
+            debugMode.addEventListener('change', () => {
+                debugPanel.style.display = debugMode.checked ? 'block' : 'none';
+                roomSelection.style.display = debugMode.checked ? 'flex' : 'none';
+            });
+            
+            // Generate UUID function
+            function generateUUID() {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            }
             
             // Debug function
             function debug(message) {
@@ -203,20 +424,22 @@
             function initializeSocket() {
                 debug("Initializing socket connection...");
                 
-                // Connect to the Socket.IO server
-                // Update this URL to your Socket.IO server address
-                socket = io('http://135.235.214.234:5000', {
+                socket = io('https://4.224.1.158:443', {
                     reconnectionAttempts: 5,
                     timeout: 10000,
                     transports: ['websocket', 'polling']
                 });
                 
-                // Connection event handlers
                 socket.on('connect', () => {
                     debug("Socket connected successfully");
                     connectionStatus.textContent = 'Connected';
                     connectionStatus.className = 'connection-status connected';
-                    joinRoomButton.disabled = false;
+                    
+                    const uuid = generateUUID();
+                    roomInput.value = uuid;
+                    debug(`Auto-generated UUID: ${uuid}`);
+                    
+                    joinRoom(uuid);
                 });
                 
                 socket.on('disconnect', () => {
@@ -235,7 +458,6 @@
                     connectionStatus.className = 'connection-status disconnected';
                 });
                 
-                // Message event handler
                 socket.on('response', (data) => {
                     debug(`Received response: ${JSON.stringify(data)}`);
                     
@@ -246,43 +468,39 @@
                     }
                 });
                 
-                // Listen for any event (for debugging)
                 socket.onAny((eventName, ...args) => {
                     debug(`Event received: ${eventName}, Args: ${JSON.stringify(args)}`);
                 });
             }
             
-            // Join a room
-            function joinRoom() {
-                const roomId = roomInput.value.trim();
+            function joinRoom(roomId) {
+                if (!roomId) {
+                    roomId = roomInput.value.trim();
+                }
                 
                 if (!roomId) {
-                    alert('Please enter a room ID');
+                    debug("No room ID provided");
                     return;
                 }
                 
                 debug(`Attempting to join room: ${roomId}`);
                 
-                // Leave current room if any
                 if (currentRoom) {
                     debug(`Leaving current room: ${currentRoom}`);
                     messagesContainer.innerHTML = '';
                 }
                 
-                // Join new room
                 socket.emit('join_room', roomId);
                 currentRoom = roomId;
                 
-                // Update UI
                 messageInput.disabled = false;
                 sendButton.disabled = false;
-                messagesContainer.innerHTML = `<div class="status-message">Joined room: ${roomId}</div>`;
+                messagesContainer.innerHTML = `<div class="status-message">Session ID: ${roomId}</div>`;
                 messageInput.focus();
                 
                 debug(`Joined room: ${roomId}`);
             }
             
-            // Send a message
             function sendMessage() {
                 const message = messageInput.value.trim();
                 
@@ -292,23 +510,18 @@
                 
                 debug(`Sending message to room ${currentRoom}: ${message}`);
                 
-                // Send message to server
                 socket.emit('request', message, currentRoom);
                 
-                // Display message
                 displayMessage(message, true);
                 
-                // Clear input
                 messageInput.value = '';
                 messageInput.focus();
             }
             
-            // Display a message in the chat
             function displayMessage(message, isUser) {
                 debug(`Displaying ${isUser ? 'user' : 'response'} message: ${message}`);
                 
                 try {
-                    // Try to parse if it's a JSON string
                     if (typeof message === 'string' && message.startsWith('{') && message.endsWith('}')) {
                         try {
                             const jsonMessage = JSON.parse(message);
@@ -317,7 +530,6 @@
                             }
                         } catch (e) {
                             debug(`Error parsing JSON: ${e.message}`);
-                            // Keep original message if parsing fails
                         }
                     }
                     
@@ -327,15 +539,13 @@
                     
                     messagesContainer.appendChild(messageElement);
                     
-                    // Scroll to bottom
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 } catch (error) {
                     debug(`Error displaying message: ${error.message}`);
                 }
             }
             
-            // Event listeners
-            joinRoomButton.addEventListener('click', joinRoom);
+            joinRoomButton.addEventListener('click', () => joinRoom());
             
             sendButton.addEventListener('click', sendMessage);
             
@@ -345,13 +555,6 @@
                 }
             });
             
-            roomInput.addEventListener('keypress', (event) => {
-                if (event.key === 'Enter') {
-                    joinRoom();
-                }
-            });
-            
-            // Initialize the Socket.IO connection
             initializeSocket();
         });
     </script>
